@@ -267,13 +267,7 @@ def main():
             logger.info(f"🔄 Bot startup attempt {attempt + 1}/{max_retries}")
             
             # Create application with conflict handling
-            application = (Application.builder()
-                         .token(BOT_TOKEN)
-                         .get_updates_request(
-                             read_timeout=10,
-                             connect_timeout=10
-                         )
-                         .build())
+            application = Application.builder().token(BOT_TOKEN).build()
             
             # Add handlers
             application.add_handler(CommandHandler("start", start_command))
