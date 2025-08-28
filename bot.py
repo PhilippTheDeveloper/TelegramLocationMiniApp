@@ -2,9 +2,12 @@ import os
 import json
 import logging
 import math
+import time
+import asyncio
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
+from telegram.error import Conflict, NetworkError
 
 # Enable logging
 logging.basicConfig(
@@ -15,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
-import time
 WEB_APP_URL = f'https://philippthedeveloper.github.io/TelegramLocationMiniApp/?v={int(time.time())}'
 
 if not BOT_TOKEN:
@@ -31,9 +33,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🌟 Welcome {first_name}!\n\n"
         "📍 Use this bot to share your location with a custom radius.\n\n"
         "🗺️ Tap the button below to open the map and:\n"
-        "• Drop a pin anywhere on the map\n"
+        "• Drag the map to position the pin\n"
         "• Adjust the radius with the slider (0.1-10 km)\n"
-        "• Share your location back to this chat\n\n"
+        "• Tap 'Done' to send location back\n\n"
         "Let's get started! 🚀"
     )
     
@@ -59,15 +61,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• /help - Show this help message\n\n"
         "<b>How to use:</b>\n"
         "1️⃣ Tap \"Open Location Map\" button\n"
-        "2️⃣ Click or drag the pin on the map\n"
+        "2️⃣ Drag the map to position the fixed pin\n"
         "3️⃣ Adjust the radius with the slider\n"
-        "4️⃣ Tap \"Share\" to send location back\n\n"
+        "4️⃣ Tap \"Done\" to send location back\n\n"
         "<b>Features:</b>\n"
-        "📍 Interactive map starting in Berlin\n"
+        "📍 Fixed pin with draggable map\n"
         "📏 Adjustable radius (0.1-10 km)\n"
-        "🎯 Real-time coordinates display\n"
+        "🎯 Real-time coverage display\n"
         "📱 Mobile-optimized interface\n\n"
-        "Need more help? Contact the developer!"
+        "Perfect for setting delivery zones! 🚀"
     )
     
     await update.message.reply_text(help_message, parse_mode='HTML')
@@ -250,35 +252,69 @@ async def handle_text_messages(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
 def main():
-    """Start the bot"""
-    # Create application
-    application = Application.builder().token(BOT_TOKEN).build()
+    """Start the bot with proper conflict handling"""
+    logger.info("🚀 Starting Location Bot with conflict handling...")
     
-    # Add handlers
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
-    application.add_handler(CallbackQueryHandler(handle_callback_query))
-    application.add_handler(MessageHandler(filters.LOCATION, handle_location))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_messages))
+    # Add delay to let old instances shut down completely
+    logger.info("⏳ Waiting for any existing instances to shut down...")
+    time.sleep(10)
     
-    # Start the bot
-    logger.info("✅ Location Bot is starting...")
-    logger.info(f"🌐 Mini App URL: {WEB_APP_URL}")
-    logger.info("📱 Send /start to begin...")
+    max_retries = 3
+    retry_delay = 15
     
-    # Run the bot
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"🔄 Bot startup attempt {attempt + 1}/{max_retries}")
+            
+            # Create application with conflict handling
+            application = (Application.builder()
+                         .token(BOT_TOKEN)
+                         .get_updates_request(
+                             read_timeout=10,
+                             connect_timeout=10
+                         )
+                         .build())
+            
+            # Add handlers
+            application.add_handler(CommandHandler("start", start_command))
+            application.add_handler(CommandHandler("help", help_command))
+            application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
+            application.add_handler(CallbackQueryHandler(handle_callback_query))
+            application.add_handler(MessageHandler(filters.LOCATION, handle_location))
+            application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_messages))
+            
+            logger.info("✅ Location Bot is starting...")
+            logger.info(f"🌐 Mini App URL: {WEB_APP_URL}")
+            logger.info("📱 Send /start to begin...")
+            
+            # Start the bot with conflict handling
+            application.run_polling(
+                allowed_updates=Update.ALL_TYPES,
+                drop_pending_updates=True,  # Drop any pending updates to avoid conflicts
+                close_loop=False
+            )
+            
+            # If we get here, the bot shut down normally
+            logger.info("🛑 Bot shut down normally")
+            break
+            
+        except Conflict as e:
+            logger.warning(f"⚠️ Conflict detected on attempt {attempt + 1}: {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"⏳ Waiting {retry_delay} seconds before retry...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                logger.error("❌ Max retries reached. Bot startup failed.")
+                raise
+                
+        except Exception as e:
+            logger.error(f"❌ Unexpected error on attempt {attempt + 1}: {e}")
+            if attempt < max_retries - 1:
+                logger.info(f"⏳ Waiting {retry_delay} seconds before retry...")
+                time.sleep(retry_delay)
+            else:
+                raise
 
 if __name__ == '__main__':
     main()
-
-    import time
-
-def main():
-    # Add small delay to let old instances shut down
-    time.sleep(5)
-    
-    # Your existing bot code...
-    application = Application.builder().token(BOT_TOKEN).build()
-    # ... rest of code
