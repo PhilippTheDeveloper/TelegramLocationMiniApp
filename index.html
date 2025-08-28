@@ -196,8 +196,8 @@
 </head>
 <body>
     <div class="header">
-        <h1>🏠 Set Berlin Location</h1>
-        <p>Position the pin in your desired area and adjust radius</p>
+        <h1 id="headerTitle">🏠 Set Berlin Location</h1>
+        <p id="headerSubtitle">Position the pin in your desired area and adjust radius</p>
     </div>
 
     <div class="map-container">
@@ -234,14 +234,59 @@
         let map;
         let circle;
         let currentRadius = 2.0;
+        let currentMode = 'location'; // Default mode
+        let viertelName = '';
+
+        // Parse URL parameters to get mode and coordinates
+        function parseUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode');
+            const lat = urlParams.get('lat');
+            const lng = urlParams.get('lng');
+            const zoom = urlParams.get('zoom');
+            const viertel = urlParams.get('viertel');
+            
+            console.log('URL params:', { mode, lat, lng, zoom, viertel });
+            
+            if (mode) {
+                currentMode = mode;
+            }
+            
+            if (viertel) {
+                viertelName = decodeURIComponent(viertel);
+            }
+            
+            // Update UI based on mode
+            if (currentMode === 'apartment') {
+                document.getElementById('headerTitle').textContent = `🏠 Set Location in ${viertelName || 'Berlin'}`;
+                document.getElementById('headerSubtitle').textContent = 'Position the pin in your preferred area within the neighborhood';
+                document.getElementById('doneButton').textContent = 'Set location and continue search';
+            }
+            
+            // Return coordinates if available
+            if (lat && lng) {
+                return {
+                    lat: parseFloat(lat),
+                    lng: parseFloat(lng),
+                    zoom: zoom ? parseInt(zoom) : 12
+                };
+            }
+            
+            return null;
+        }
 
         // Initialize map
         function initMap() {
+            const urlCoords = parseUrlParams();
+            const initialLat = urlCoords ? urlCoords.lat : BERLIN_LAT;
+            const initialLng = urlCoords ? urlCoords.lng : BERLIN_LNG;
+            const initialZoom = urlCoords ? urlCoords.zoom : 12;
+
             map = L.map('map', {
                 zoomControl: true,
                 attributionControl: false,
-                center: [BERLIN_LAT, BERLIN_LNG],
-                zoom: 12
+                center: [initialLat, initialLng],
+                zoom: initialZoom
             });
 
             // Add OpenStreetMap tiles
@@ -308,14 +353,22 @@
                 latitude: lat,
                 longitude: lng,
                 radius: radius,
+                mode: currentMode, // IMPORTANT: Include the mode
+                viertel: viertelName,
                 timestamp: new Date().toISOString()
             };
+            
+            console.log('Sending location data:', locationData);
             
             if (tg && tg.sendData) {
                 // Send data back to Telegram bot
                 tg.sendData(JSON.stringify(locationData));
                 
-                showToast('Location set! Continuing search...');
+                if (currentMode === 'apartment') {
+                    showToast('Location set! Setting up apartment search...');
+                } else {
+                    showToast('Location set! Sending to chat...');
+                }
                 
                 // Close the Mini App after a short delay
                 setTimeout(() => {
@@ -329,7 +382,7 @@
                 showToast('Location data ready!');
                 
                 // Copy to clipboard as fallback
-                const shareText = `📍 Berlin Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}\n🎯 Radius: ${radius} km`;
+                const shareText = `📍 Berlin Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}\n🎯 Radius: ${radius} km\n🏠 Mode: ${currentMode}`;
                     
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(shareText);
@@ -352,9 +405,13 @@
         window.addEventListener('load', function() {
             initMap();
             
-            // Show initial toast
+            // Show initial toast based on mode
             setTimeout(() => {
-                showToast('📍 Position the pin in your desired Berlin area');
+                if (currentMode === 'apartment') {
+                    showToast(`📍 Position the pin in your preferred area in ${viertelName || 'Berlin'}`);
+                } else {
+                    showToast('📍 Position the pin in your desired Berlin area');
+                }
             }, 1000);
         });
 
