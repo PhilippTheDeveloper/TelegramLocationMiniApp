@@ -272,3 +272,13 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+    import time
+
+def main():
+    # Add small delay to let old instances shut down
+    time.sleep(5)
+    
+    # Your existing bot code...
+    application = Application.builder().token(BOT_TOKEN).build()
+    # ... rest of code
