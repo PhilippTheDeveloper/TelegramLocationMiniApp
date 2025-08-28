@@ -4,57 +4,26 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Main Button Test</title>
-  <style>
-    body { font-family: system-ui, Arial; padding: 20px; text-align: center; }
-    h1 { color: #333; }
-    p { color: #666; font-size: 1.1em; }
-    .warning { font-weight: bold; color: #d9534f; }
-  </style>
 </head>
 <body>
-  <h1>The Final Test</h1>
-  <p>The page has loaded correctly.</p>
-  <p class="warning">Please look for and click the blue button at the VERY BOTTOM of your screen, labeled "✅ Send Final Test".</p>
-  <p>(There is no clickable button inside this webpage itself.)</p>
-
+  <p>Click the blue button at the VERY BOTTOM of your screen, labeled "✅ Send Final Test".</p>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
-    // This function contains the data we want to send
     function sendFinalTestData() {
-      const payload = {
-        status: "success",
-        message: "Data sent via the Main Button!",
-        timestamp: new Date().toISOString()
-      };
-      
+      const payload = { status: "success", message: "Data sent via the Main Button!" };
       try {
-        // This is the command to send data to your bot.
         window.Telegram.WebApp.sendData(JSON.stringify(payload));
-        // If this is successful, Telegram will close the Mini App.
       } catch (e) {
-        // Show an alert if the sendData command itself fails.
         window.Telegram.WebApp.showAlert("Error sending data: " + (e?.message || e));
       }
     }
-
-    // Main execution block
     try {
       const tg = window.Telegram.WebApp;
-
-      // Tell Telegram we are ready
       tg.ready();
-      
-      // Configure the native Main Button
       tg.MainButton.setText("✅ Send Final Test");
-
-      // Set the function to run when the Main Button is clicked
       tg.onEvent('mainButtonClicked', sendFinalTestData);
-      
-      // IMPORTANT: Show the button.
       tg.MainButton.show();
-
     } catch (e) {
-      // If the Telegram script itself failed to load, this would show
       alert("A critical error occurred: " + (e?.message || e));
     }
   </script>
