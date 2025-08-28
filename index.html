@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map Pin & Radius</title>
+    <title>Location & Radius</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -24,99 +24,22 @@
         }
 
         .header {
-            padding: 15px 20px;
+            padding: 20px;
             background: var(--tg-theme-secondary-bg-color, #f8f9fa);
             border-bottom: 1px solid var(--tg-theme-section-separator-color, #e0e0e0);
+            text-align: center;
         }
 
         .header h1 {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 600;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             color: var(--tg-theme-text-color, #000000);
         }
 
         .header p {
-            font-size: 12px;
+            font-size: 14px;
             color: var(--tg-theme-hint-color, #999999);
-        }
-
-        .controls {
-            padding: 15px 20px;
-            background: var(--tg-theme-bg-color, #ffffff);
-            border-bottom: 1px solid var(--tg-theme-section-separator-color, #e0e0e0);
-        }
-
-        .radius-control {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .radius-label {
-            font-size: 14px;
-            font-weight: 500;
-            min-width: 60px;
-            color: var(--tg-theme-text-color, #000000);
-        }
-
-        .radius-slider {
-            flex: 1;
-            height: 6px;
-            background: var(--tg-theme-section-separator-color, #e0e0e0);
-            border-radius: 3px;
-            outline: none;
-            -webkit-appearance: none;
-        }
-
-        .radius-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: var(--tg-theme-button-color, #0088cc);
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .radius-slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: var(--tg-theme-button-color, #0088cc);
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .radius-value {
-            font-size: 14px;
-            font-weight: 600;
-            min-width: 60px;
-            text-align: right;
-            color: var(--tg-theme-accent-text-color, #0088cc);
-        }
-
-        .coordinates-display {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-        }
-
-        .coord-item {
-            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            color: var(--tg-theme-text-color, #000000);
-        }
-
-        .coord-label {
-            font-weight: 600;
-            margin-right: 5px;
         }
 
         .map-container {
@@ -129,40 +52,129 @@
             height: 100%;
         }
 
-        .actions {
-            padding: 15px 20px;
-            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+        .controls {
+            padding: 20px;
+            background: var(--tg-theme-bg-color, #ffffff);
             border-top: 1px solid var(--tg-theme-section-separator-color, #e0e0e0);
+        }
+
+        .radius-control {
             display: flex;
-            gap: 10px;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
-        .action-btn {
+        .radius-label {
+            font-size: 16px;
+            font-weight: 600;
+            min-width: 70px;
+            color: var(--tg-theme-text-color, #000000);
+        }
+
+        .radius-slider {
             flex: 1;
+            height: 8px;
+            background: var(--tg-theme-section-separator-color, #e0e0e0);
+            border-radius: 4px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .radius-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
             background: var(--tg-theme-button-color, #0088cc);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
             cursor: pointer;
-            transition: opacity 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
 
-        .action-btn:hover {
-            opacity: 0.8;
+        .radius-slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--tg-theme-button-color, #0088cc);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
 
-        .action-btn.secondary {
-            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
-            border: 1px solid var(--tg-theme-button-color, #0088cc);
+        .radius-value {
+            font-size: 16px;
+            font-weight: 700;
+            min-width: 80px;
+            text-align: right;
             color: var(--tg-theme-button-color, #0088cc);
         }
 
-        .action-btn.secondary:hover {
+        .done-button {
+            width: 100%;
             background: var(--tg-theme-button-color, #0088cc);
             color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 136, 204, 0.3);
+        }
+
+        .done-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 136, 204, 0.4);
+        }
+
+        .done-button:active {
+            transform: translateY(0);
+        }
+
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: var(--tg-theme-button-color, #0088cc);
+            border-radius: 2px;
+        }
+
+        .crosshair::before {
+            width: 30px;
+            height: 4px;
+            top: -2px;
+            left: -15px;
+        }
+
+        .crosshair::after {
+            width: 4px;
+            height: 30px;
+            top: -15px;
+            left: -2px;
+        }
+
+        .pin-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -100%);
+            pointer-events: none;
+            z-index: 1000;
+            font-size: 32px;
+            color: #ff4444;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
         }
 
         .status-toast {
@@ -186,78 +198,53 @@
             opacity: 1;
         }
 
-        /* Custom marker styles */
-        .custom-marker {
-            width: 30px;
-            height: 30px;
-            background: var(--tg-theme-button-color, #0088cc);
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        /* Custom circle style */
+        .radius-circle {
+            fill-opacity: 0.1;
+            stroke-width: 3;
+            stroke-opacity: 0.6;
         }
 
-        /* Responsive adjustments */
         @media (max-width: 480px) {
             .header {
-                padding: 12px 15px;
+                padding: 15px;
             }
             
             .controls {
-                padding: 12px 15px;
+                padding: 15px;
             }
             
-            .actions {
-                padding: 12px 15px;
+            .header h1 {
+                font-size: 18px;
             }
             
-            .coord-item {
-                padding: 6px 8px;
-                font-size: 11px;
+            .done-button {
+                padding: 14px;
+                font-size: 16px;
             }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>📍 Map Pin & Radius</h1>
-        <p>Drop a pin and set radius in Berlin</p>
+        <h1>📍 Set Location & Radius</h1>
+        <p>Drag the map to position, adjust radius</p>
+    </div>
+
+    <div class="map-container">
+        <div id="map"></div>
+        <div class="pin-icon">📍</div>
     </div>
 
     <div class="controls">
         <div class="radius-control">
             <span class="radius-label">Radius:</span>
-            <input type="range" class="radius-slider" id="radiusSlider" min="0.1" max="10" step="0.1" value="1">
-            <span class="radius-value" id="radiusValue">1.0 km</span>
+            <input type="range" class="radius-slider" id="radiusSlider" min="0.1" max="10" step="0.1" value="1.8">
+            <span class="radius-value" id="radiusValue">1.8 km</span>
         </div>
         
-        <div class="coordinates-display" id="coordinatesDisplay" style="display: none;">
-            <div class="coord-item">
-                <span class="coord-label">Lat:</span>
-                <span id="currentLat">52.5200</span>
-            </div>
-            <div class="coord-item">
-                <span class="coord-label">Lng:</span>
-                <span id="currentLng">13.4050</span>
-            </div>
-        </div>
-    </div>
-
-    <div class="map-container">
-        <div id="map"></div>
-    </div>
-
-    <div class="actions">
-        <button class="action-btn secondary" onclick="centerOnBerlin()">
-            Reset to Berlin
-        </button>
-        <button class="action-btn secondary" onclick="getCurrentLocation()">
-            My Location
-        </button>
-        <button class="action-btn" onclick="copyCoordinates()">
-            Copy Coordinates
-        </button>
-        <button class="action-btn" onclick="shareLocation()">
-            Share
+        <button class="done-button" onclick="shareLocation()">
+            Done
         </button>
     </div>
 
@@ -276,16 +263,17 @@
         const BERLIN_LNG = 13.4050;
 
         let map;
-        let marker;
         let circle;
-        let currentRadius = 1.0;
+        let currentRadius = 1.8;
 
         // Initialize map
         function initMap() {
             map = L.map('map', {
                 zoomControl: true,
-                attributionControl: false
-            }).setView([BERLIN_LAT, BERLIN_LNG], 12);
+                attributionControl: false,
+                center: [BERLIN_LAT, BERLIN_LNG],
+                zoom: 12
+            });
 
             // Add OpenStreetMap tiles
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -293,68 +281,35 @@
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            // Create initial marker and circle
-            createMarkerAndCircle(BERLIN_LAT, BERLIN_LNG);
+            // Create initial circle
+            createCircle();
 
-            // Add click event to map
-            map.on('click', function(e) {
-                const { lat, lng } = e.latlng;
-                updateMarkerPosition(lat, lng);
-            });
-
-            // Update coordinates display
-            updateCoordinatesDisplay(BERLIN_LAT, BERLIN_LNG);
+            // Update circle when map moves
+            map.on('move', updateCirclePosition);
+            map.on('zoom', updateCirclePosition);
         }
 
-        function createMarkerAndCircle(lat, lng) {
-            // Remove existing marker and circle
-            if (marker) {
-                map.removeLayer(marker);
-            }
+        function createCircle() {
             if (circle) {
                 map.removeLayer(circle);
             }
 
-            // Create custom marker
-            const customIcon = L.divIcon({
-                className: 'custom-marker',
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
-            });
-
-            marker = L.marker([lat, lng], { 
-                icon: customIcon,
-                draggable: true 
-            }).addTo(map);
-
-            // Add drag event to marker
-            marker.on('dragend', function(e) {
-                const { lat, lng } = e.target.getLatLng();
-                updateCirclePosition(lat, lng);
-                updateCoordinatesDisplay(lat, lng);
-            });
-
-            // Create circle
-            circle = L.circle([lat, lng], {
+            const center = map.getCenter();
+            circle = L.circle([center.lat, center.lng], {
                 radius: currentRadius * 1000, // Convert km to meters
                 color: '#0088cc',
                 fillColor: '#0088cc',
                 fillOpacity: 0.1,
-                weight: 2
+                weight: 3,
+                opacity: 0.6,
+                className: 'radius-circle'
             }).addTo(map);
         }
 
-        function updateMarkerPosition(lat, lng) {
-            if (marker) {
-                marker.setLatLng([lat, lng]);
-            }
-            updateCirclePosition(lat, lng);
-            updateCoordinatesDisplay(lat, lng);
-        }
-
-        function updateCirclePosition(lat, lng) {
+        function updateCirclePosition() {
             if (circle) {
-                circle.setLatLng([lat, lng]);
+                const center = map.getCenter();
+                circle.setLatLng([center.lat, center.lng]);
             }
         }
 
@@ -365,12 +320,6 @@
             }
         }
 
-        function updateCoordinatesDisplay(lat, lng) {
-            document.getElementById('currentLat').textContent = lat.toFixed(6);
-            document.getElementById('currentLng').textContent = lng.toFixed(6);
-            document.getElementById('coordinatesDisplay').style.display = 'flex';
-        }
-
         // Radius slider event
         document.getElementById('radiusSlider').addEventListener('input', function(e) {
             const radius = parseFloat(e.target.value);
@@ -379,124 +328,45 @@
             updateCircleRadius(radius);
         });
 
-        // Action functions
-        function centerOnBerlin() {
-            map.setView([BERLIN_LAT, BERLIN_LNG], 12);
-            updateMarkerPosition(BERLIN_LAT, BERLIN_LNG);
-            showToast('Centered on Berlin');
-        }
-
-        function getCurrentLocation() {
-            if (!navigator.geolocation) {
-                showToast('Geolocation not supported', 'error');
-                return;
-            }
-
-            showToast('Getting your location...', 'loading');
-
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    const { latitude, longitude } = position.coords;
-                    map.setView([latitude, longitude], 14);
-                    updateMarkerPosition(latitude, longitude);
-                    showToast('Location updated!');
-                },
-                function(error) {
-                    let errorMessage = 'Location error: ';
-                    switch(error.code) {
-                        case error.PERMISSION_DENIED:
-                            errorMessage += 'Permission denied';
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            errorMessage += 'Position unavailable';
-                            break;
-                        case error.TIMEOUT:
-                            errorMessage += 'Request timeout';
-                            break;
-                        default:
-                            errorMessage += 'Unknown error';
-                    }
-                    showToast(errorMessage, 'error');
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 60000
-                }
-            );
-        }
-
-        function copyCoordinates() {
-            const lat = document.getElementById('currentLat').textContent;
-            const lng = document.getElementById('currentLng').textContent;
-            const radius = currentRadius.toFixed(1);
-            const text = `Coordinates: ${lat}, ${lng}\nRadius: ${radius} km`;
-
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(() => {
-                    showToast('Coordinates copied!');
-                }).catch(() => {
-                    fallbackCopy(text);
-                });
-            } else {
-                fallbackCopy(text);
-            }
-        }
-
-        function fallbackCopy(text) {
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-999999px';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                document.execCommand('copy');
-                showToast('Coordinates copied!');
-            } catch (err) {
-                showToast('Copy failed', 'error');
-            }
-            
-            document.body.removeChild(textArea);
-        }
-
         function shareLocation() {
-            const lat = document.getElementById('currentLat').textContent;
-            const lng = document.getElementById('currentLng').textContent;
+            const center = map.getCenter();
+            const lat = center.lat;
+            const lng = center.lng;
             const radius = currentRadius.toFixed(1);
             
-            const shareText = `📍 Location: ${lat}, ${lng}\n🎯 Radius: ${radius} km\n🗺️ https://maps.google.com/maps?q=${lat},${lng}`;
+            const locationData = {
+                latitude: lat,
+                longitude: lng,
+                radius: radius,
+                timestamp: new Date().toISOString()
+            };
             
             if (tg && tg.sendData) {
                 // Send data back to Telegram bot
-                tg.sendData(JSON.stringify({
-                    latitude: parseFloat(lat),
-                    longitude: parseFloat(lng),
-                    radius: radius,
-                    timestamp: new Date().toISOString()
-                }));
-            } else if (navigator.share) {
-                navigator.share({
-                    title: 'My Location Pin',
-                    text: shareText
-                }).catch(() => {
-                    fallbackCopy(shareText);
-                });
+                tg.sendData(JSON.stringify(locationData));
+                showToast('Location shared!');
             } else {
-                fallbackCopy(shareText);
+                // Fallback for testing
+                console.log('Location data:', locationData);
+                showToast('Location data ready!');
+                
+                // Copy to clipboard as fallback
+                const shareText = `📍 Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}\n🎯 Radius: ${radius} km`;
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(shareText);
+                    showToast('Copied to clipboard!');
+                }
             }
         }
 
-        function showToast(message, type = 'success') {
+        function showToast(message) {
             const toast = document.getElementById('statusToast');
             toast.textContent = message;
-            toast.className = 'status-toast show';
+            toast.classList.add('show');
             
             setTimeout(() => {
                 toast.classList.remove('show');
-            }, 3000);
+            }, 2500);
         }
 
         // Initialize when page loads
@@ -504,16 +374,22 @@
             initMap();
         });
 
-        // Handle Telegram Web App theme changes
+        // Handle Telegram Web App events
         if (tg) {
-            tg.onEvent('themeChanged', function() {
-                // Theme changed, you could update map styling here if needed
-            });
-            
-            // Set main button if needed
-            tg.MainButton.setText('Share Location');
+            // Set main button
+            tg.MainButton.setText('Done');
             tg.MainButton.onClick(shareLocation);
             tg.MainButton.show();
+            
+            // Handle theme changes
+            tg.onEvent('themeChanged', function() {
+                // Could update map styling based on theme
+            });
+            
+            // Handle back button
+            tg.BackButton.onClick(function() {
+                tg.close();
+            });
         }
     </script>
 </body>
