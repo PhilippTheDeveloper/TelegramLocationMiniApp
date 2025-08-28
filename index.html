@@ -345,6 +345,13 @@
                 // Send data back to Telegram bot
                 tg.sendData(JSON.stringify(locationData));
                 showToast('Location shared!');
+                
+                // Close the Mini App after a short delay
+                setTimeout(() => {
+                    if (tg.close) {
+                        tg.close();
+                    }
+                }, 500);
             } else {
                 // Fallback for testing
                 console.log('Location data:', locationData);
@@ -376,9 +383,11 @@
 
         // Handle Telegram Web App events
         if (tg) {
-            // Set main button
+            // Set main button - also closes app when clicked
             tg.MainButton.setText('Done');
-            tg.MainButton.onClick(shareLocation);
+            tg.MainButton.onClick(() => {
+                shareLocation();
+            });
             tg.MainButton.show();
             
             // Handle theme changes
@@ -386,10 +395,11 @@
                 // Could update map styling based on theme
             });
             
-            // Handle back button
+            // Handle back button - close app
             tg.BackButton.onClick(function() {
                 tg.close();
             });
+            tg.BackButton.show();
         }
     </script>
 </body>
