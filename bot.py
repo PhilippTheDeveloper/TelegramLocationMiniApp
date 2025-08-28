@@ -1,79 +1,273 @@
-import logging
+import os
 import json
-from telegram import Update, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+import logging
+import math
+from datetime import datetime
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
-# --- CONFIGURATION ---
-# Paste your bot's token here. Use the NEW one if you created one.
-BOT_TOKEN = "PASTE_YOUR_TELEGRAM_BOT_TOKEN_HERE"
-
-# IMPORTANT: Use a new cache-busting version number at the end of the URL.
-# If you used ?v=6 last time, use ?v=7 now.
-WEBAPP_URL = "https://philippthedeveloper.github.io/TelegramLocationMiniApp/?v=7"
-
-# Enable logging to see errors and information in your console
+# Enable logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
+# Configuration
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+WEB_APP_URL = 'https://philippthedeveloper.github.io/TelegramLocationMiniApp/'
 
-# This function handles the /start command.
-# It replies with a button that opens your Mini App.
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton(
-            "📍 Open Mini-App",
-            web_app=WebAppInfo(url=WEBAPP_URL)
-        )]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+if not BOT_TOKEN:
+    logger.error("❌ BOT_TOKEN environment variable is required!")
+    exit(1)
 
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /start command"""
+    user = update.effective_user
+    first_name = user.first_name or "there"
+    
+    welcome_message = (
+        f"🌟 Welcome {first_name}!\n\n"
+        "📍 Use this bot to share your location with a custom radius.\n\n"
+        "🗺️ Tap the button below to open the map and:\n"
+        "• Drop a pin anywhere on the map\n"
+        "• Adjust the radius with the slider (0.1-10 km)\n"
+        "• Share your location back to this chat\n\n"
+        "Let's get started! 🚀"
+    )
+    
+    # Create Mini App button
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🗺️ Open Location Map", web_app=WebAppInfo(url=WEB_APP_URL))]
+    ])
+    
     await update.message.reply_text(
-        "Please click the button below to open the location selector:",
-        reply_markup=reply_markup
+        welcome_message, 
+        reply_markup=keyboard,
+        parse_mode='HTML'
+    )
+    
+    logger.info(f"📱 /start command used by {first_name} ({update.effective_chat.id})")
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /help command"""
+    help_message = (
+        "🤖 <b>Location Bot Help</b>\n\n"
+        "<b>Commands:</b>\n"
+        "• /start - Open the location map\n"
+        "• /help - Show this help message\n\n"
+        "<b>How to use:</b>\n"
+        "1️⃣ Tap \"Open Location Map\" button\n"
+        "2️⃣ Click or drag the pin on the map\n"
+        "3️⃣ Adjust the radius with the slider\n"
+        "4️⃣ Tap \"Share\" to send location back\n\n"
+        "<b>Features:</b>\n"
+        "📍 Interactive map starting in Berlin\n"
+        "📏 Adjustable radius (0.1-10 km)\n"
+        "🎯 Real-time coordinates display\n"
+        "📱 Mobile-optimized interface\n\n"
+        "Need more help? Contact the developer!"
+    )
+    
+    await update.message.reply_text(help_message, parse_mode='HTML')
+    logger.info(f"❓ Help requested by user {update.effective_chat.id}")
+
+async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle data from the Mini App"""
+    user = update.effective_user
+    first_name = user.first_name or "User"
+    chat_id = update.effective_chat.id
+    
+    try:
+        # Parse the data from Mini App
+        data = json.loads(update.effective_message.web_app_data.data)
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        radius = data.get('radius')
+        timestamp = data.get('timestamp')
+        
+        logger.info(f"📍 Location data received from {first_name}: {latitude}, {longitude}, {radius}km")
+        
+        # Validate data
+        if not all([latitude, longitude, radius]):
+            raise ValueError("Invalid location data received")
+        
+        # Format timestamp
+        if timestamp:
+            dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            formatted_time = dt.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            formatted_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Create location message
+        location_message = (
+            f"📍 <b>{first_name}'s Location</b>\n\n"
+            f"🎯 <b>Coordinates:</b>\n"
+            f"• Latitude: <code>{latitude:.6f}</code>\n"
+            f"• Longitude: <code>{longitude:.6f}</code>\n\n"
+            f"📏 <b>Radius:</b> {radius} km\n"
+            f"🕒 <b>Shared:</b> {formatted_time}\n\n"
+            f"🗺️ <a href='https://maps.google.com/maps?q={latitude},{longitude}'>Open in Google Maps</a>"
+        )
+        
+        # Create action buttons
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("🗺️ Google Maps", url=f"https://maps.google.com/maps?q={latitude},{longitude}"),
+                InlineKeyboardButton("🧭 Directions", url=f"https://maps.google.com/maps?daddr={latitude},{longitude}")
+            ],
+            [
+                InlineKeyboardButton("📋 Copy Coordinates", callback_data=f"copy_coords_{latitude}_{longitude}_{radius}")
+            ],
+            [
+                InlineKeyboardButton("🗺️ Share New Location", web_app=WebAppInfo(url=WEB_APP_URL))
+            ]
+        ])
+        
+        # Send formatted location message
+        await update.effective_message.reply_text(
+            location_message,
+            reply_markup=keyboard,
+            parse_mode='HTML',
+            disable_web_page_preview=False
+        )
+        
+        # Send actual location pin
+        await context.bot.send_location(
+            chat_id=chat_id,
+            latitude=latitude,
+            longitude=longitude
+        )
+        
+        # Calculate and send coverage area info
+        area = math.pi * (float(radius) ** 2)
+        circumference = 2 * math.pi * float(radius)
+        
+        coverage_message = (
+            f"🔵 <b>Coverage Area</b>\n\n"
+            f"The selected radius of <b>{radius} km</b> covers:\n"
+            f"• Area: <b>{area:.2f} km²</b>\n"
+            f"• Circumference: <b>{circumference:.2f} km</b>\n\n"
+            f"Perfect for delivery zones, service areas, or meeting points! 🎯"
+        )
+        
+        await update.effective_message.reply_text(coverage_message, parse_mode='HTML')
+        
+        logger.info(f"✅ Location processed successfully for user {chat_id}")
+        
+    except Exception as error:
+        logger.error(f"❌ Error processing web app data: {error}")
+        await update.effective_message.reply_text(
+            "❌ Error processing location data. Please try again with the map."
+        )
+
+async def handle_callback_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle button clicks"""
+    query = update.callback_query
+    await query.answer()
+    
+    data = query.data
+    chat_id = update.effective_chat.id
+    
+    logger.info(f"🔘 Callback query: {data} from user {chat_id}")
+    
+    if data.startswith('copy_coords_'):
+        # Extract coordinates from callback data
+        parts = data.replace('copy_coords_', '').split('_')
+        lat = float(parts[0])
+        lng = float(parts[1])
+        radius = parts[2]
+        
+        coords_text = (
+            f"📍 Location Data:\n\n"
+            f"Latitude: {lat:.6f}\n"
+            f"Longitude: {lng:.6f}\n"
+            f"Radius: {radius} km\n\n"
+            f"🗺️ Google Maps: https://maps.google.com/maps?q={lat},{lng}"
+        )
+        
+        # Send coordinates as copyable text
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"<code>{coords_text}</code>",
+            parse_mode='HTML'
+        )
+        
+        # Show confirmation
+        await query.edit_message_reply_markup()
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="📋 Coordinates sent as copyable text!"
+        )
+
+async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle direct location messages"""
+    location = update.message.location
+    latitude = location.latitude
+    longitude = location.longitude
+    chat_id = update.effective_chat.id
+    
+    logger.info(f"📍 Direct location received from user {chat_id}: {latitude}, {longitude}")
+    
+    message = (
+        f"📍 <b>Location Received!</b>\n\n"
+        f"🎯 <b>Coordinates:</b>\n"
+        f"• Latitude: <code>{latitude}</code>\n"
+        f"• Longitude: <code>{longitude}</code>\n\n"
+        f"💡 <i>Tip: Use the Mini App below to set a custom radius around this location!</i>"
+    )
+    
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🗺️ Open with Radius Selector", web_app=WebAppInfo(url=WEB_APP_URL))]
+    ])
+    
+    await update.message.reply_text(
+        message,
+        reply_markup=keyboard,
+        parse_mode='HTML'
     )
 
-
-# This function handles the data sent back from the Mini App.
-async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    data_str = update.message.web_app_data.data
-    logger.info("Raw WebApp data received: %s", data_str)
-
-    try:
-        # The data is a JSON string, so we parse it.
-        data = json.loads(data_str)
-        status = data.get('status')
-        message = data.get('message')
-
-        # Create a nice confirmation message to send back to the user.
-        response_text = f"✅ Got it!\nStatus: {status}\nMessage: {message}"
-        
-        await update.message.reply_text(response_text)
-
-    except json.JSONDecodeError:
-        logger.error("Failed to parse JSON from WebApp data.")
-        await update.message.reply_text("There was an error processing the data from the Mini App.")
-    except Exception as e:
-        logger.error("An unexpected error occurred: %s", e)
-        await update.message.reply_text(f"An unexpected error occurred: {e}")
-
+async def handle_text_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle any text messages (fallback)"""
+    if update.message.text.startswith('/'):
+        return  # Skip commands
+    
+    fallback_message = (
+        "🤖 Hi! I'm a location sharing bot.\n\n"
+        "📍 Use /start to open the interactive map\n"
+        "❓ Use /help for more information\n\n"
+        "Or just send me your location and I'll help you set a radius! 🗺️"
+    )
+    
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🗺️ Open Location Map", web_app=WebAppInfo(url=WEB_APP_URL))]
+    ])
+    
+    await update.message.reply_text(
+        fallback_message,
+        reply_markup=keyboard
+    )
 
 def main():
-    logger.info("Starting bot...")
+    """Start the bot"""
+    # Create application
+    application = Application.builder().token(BOT_TOKEN).build()
     
-    # Create the Application and pass it your bot's token.
-    application = ApplicationBuilder().token(BOT_TOKEN).build()
-
-    # Register the command and message handlers
-    application.add_handler(CommandHandler("start", start))
+    # Add handlers
+    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("help", help_command))
     application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_web_app_data))
-
-    # Start the bot using polling
-    logger.info("Bot started and is now polling for updates.")
-    application.run_polling()
-
+    application.add_handler(CallbackQueryHandler(handle_callback_query))
+    application.add_handler(MessageHandler(filters.LOCATION, handle_location))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_messages))
+    
+    # Start the bot
+    logger.info("✅ Location Bot is starting...")
+    logger.info(f"🌐 Mini App URL: {WEB_APP_URL}")
+    logger.info("📱 Send /start to begin...")
+    
+    # Run the bot
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     main()
