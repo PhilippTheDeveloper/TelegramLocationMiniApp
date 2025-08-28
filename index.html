@@ -244,7 +244,7 @@
         </div>
         
         <button class="done-button" onclick="shareLocation()">
-            Done
+            Fertig
         </button>
     </div>
 
@@ -383,12 +383,8 @@
 
         // Handle Telegram Web App events
         if (tg) {
-            // Set main button - also closes app when clicked
-            tg.MainButton.setText('Done');
-            tg.MainButton.onClick(() => {
-                shareLocation();
-            });
-            tg.MainButton.show();
+            // Don't show Telegram's main button to avoid duplication
+            tg.MainButton.hide();
             
             // Handle theme changes
             tg.onEvent('themeChanged', function() {
