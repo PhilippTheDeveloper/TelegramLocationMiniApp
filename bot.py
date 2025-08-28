@@ -469,51 +469,139 @@ async def handle_location_mode_text(update: Update, context: ContextTypes.DEFAUL
     await update.message.reply_text(message, reply_markup=keyboard, parse_mode='Markdown')
 
 async def handle_web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle data from the Mini App - works for both modes"""
-    user = update.effective_user
-    user_id = update.effective_user.id
-    first_name = user.first_name or "User"
-    chat_id = update.effective_chat.id
-    session = get_user_session(user_id)
-    
+    """Handle data from the Mini App - SIMPLIFIED VERSION TO FIX CRASH"""
     try:
-        data = json.loads(update.effective_message.web_app_data.data)
-        latitude = data.get('latitude')
-        longitude = data.get('longitude') 
-        radius = data.get('radius')
-        timestamp = data.get('timestamp')
+        user_id = update.effective_user.id
+        first_name = update.effective_user.first_name or "User"
         
-        logger.info(f"📍 Location data received from {first_name}: {latitude}, {longitude}, {radius}km")
+        # Check if web app data exists
+        if not update.effective_message or not update.effective_message.web_app_data:
+            logger.error("No web app data in message")
+            await update.effective_message.reply_text("❌ No location data received. Please try the map again.")
+            return
+
+        # Parse the JSON data
+        try:
+            data = json.loads(update.effective_message.web_app_data.data)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {e}")
+            await update.effective_message.reply_text("❌ Invalid location data format. Please try again.")
+            return
+
+        logger.info(f"📍 Web app data received: {data}")
+
+        # Extract required fields
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        radius = data.get('radius')
         
         if not all([latitude, longitude, radius]):
-            raise ValueError("Invalid location data received")
+            logger.error(f"Missing data: lat={latitude}, lon={longitude}, radius={radius}")
+            await update.effective_message.reply_text("❌ Incomplete location data. Please try the map again.")
+            return
 
-        # Store coordinates in session
-        session['data']['coordinates'] = {'lat': latitude, 'lon': longitude}
-        session['data']['radius'] = float(radius)
+        # Get or create user session
+        session = get_user_session(user_id)
         
-        if session['mode'] == 'apartment':
-            # Continue apartment search flow
+        # Store coordinates in session
+        session['data']['coordinates'] = {'lat': float(latitude), 'lon': float(longitude)}
+        session['data']['radius'] = float(radius)
+
+        # Check what mode we're in
+        current_mode = session.get('mode', 'location')
+        web_app_mode = data.get('mode', 'location')
+        
+        logger.info(f"Session mode: {current_mode}, WebApp mode: {web_app_mode}")
+
+        # If apartment mode, continue the search flow
+        if current_mode == 'apartment' or web_app_mode == 'apartment':
+            session['mode'] = 'apartment'
             session['step'] = 'budget'
             
             viertel = session['data'].get('viertel', 'Selected Area')
             
-            await update.effective_message.reply_text(
-                f'✅ *Location set in {viertel}*\n'
-                f'📍 *Coordinates:* {latitude:.6f}, {longitude:.6f}\n'
-                f'🎯 *Radius:* {radius} km\n\n'
-                f'💶 What\'s your monthly budget?\nFormat: min-max (e.g., 800-1500)',
-                parse_mode='Markdown'
+            message = (
+                f"✅ *Location set in {viertel}*\n"
+                f"📍 Coordinates: `{latitude:.6f}, {longitude:.6f}`\n"
+                f"🎯 Radius: *{radius} km*\n\n"
+                f"💶 *What's your monthly budget?*\n"
+                f"Please reply with format: `min-max`\n"
+                f"Example: `800-1500`"
             )
+            
+            await update.effective_message.reply_text(message, parse_mode='Markdown')
+            logger.info(f"✅ Apartment search continued for user {user_id}")
+            
         else:
-            # Handle location sharing mode (your existing logic)
-            await handle_location_sharing(update, context, data, first_name, chat_id)
+            # Location sharing mode - your existing logic
+            await handle_location_sharing_simple(update, context, latitude, longitude, radius, first_name)
+            logger.info(f"✅ Location shared for user {user_id}")
+
+    except Exception as e:
+        logger.error(f"❌ Critical error in handle_web_app_data: {e}")
+        try:
+            await update.effective_message.reply_text(
+                "❌ Something went wrong processing your location. Please try /start to begin again."
+            )
+        except:
+            logger.error("Failed to send error message to user")
+
+async def handle_location_sharing_simple(update: Update, context: ContextTypes.DEFAULT_TYPE, 
+                                       latitude: float, longitude: float, radius: str, first_name: str):
+    """Simplified location sharing handler"""
+    try:
+        chat_id = update.effective_chat.id
         
-    except Exception as error:
-        logger.error(f"❌ Error processing web app data: {error}")
-        await update.effective_message.reply_text(
-            "❌ Error processing location data. Please try again with the map."
+        # Create location message
+        location_message = (
+            f"📍 *{first_name}'s Location*\n\n"
+            f"🎯 *Coordinates:*\n"
+            f"• Latitude: `{latitude:.6f}`\n"
+            f"• Longitude: `{longitude:.6f}`\n\n"
+            f"📏 *Radius:* {radius} km\n"
+            f"🕒 *Shared:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            f"🗺️ [Open in Google Maps](https://maps.google.com/maps?q={latitude},{longitude})"
         )
+        
+        # Create action buttons
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("🗺️ Google Maps", url=f"https://maps.google.com/maps?q={latitude},{longitude}"),
+                InlineKeyboardButton("🧭 Directions", url=f"https://maps.google.com/maps?daddr={latitude},{longitude}")
+            ],
+            [
+                InlineKeyboardButton("🗺️ Share New Location", web_app=WebAppInfo(url=WEB_APP_URL))
+            ]
+        ])
+        
+        # Send location message
+        await update.effective_message.reply_text(
+            location_message,
+            reply_markup=keyboard,
+            parse_mode='Markdown',
+            disable_web_page_preview=False
+        )
+        
+        # Send actual location pin
+        await context.bot.send_location(
+            chat_id=chat_id,
+            latitude=latitude,
+            longitude=longitude
+        )
+        
+        # Calculate area
+        area = 3.14159 * (float(radius) ** 2)
+        coverage_message = (
+            f"🔵 *Coverage Area*\n\n"
+            f"Radius of *{radius} km* covers approximately *{area:.1f} km²*\n\n"
+            f"Perfect for delivery zones! 🎯"
+        )
+        
+        await update.effective_message.reply_text(coverage_message, parse_mode='Markdown')
+        
+    except Exception as e:
+        logger.error(f"Error in location sharing: {e}")
+        await update.effective_message.reply_text("✅ Location received, but couldn't format display properly.")
 
 async def handle_location_sharing(update: Update, context: ContextTypes.DEFAULT_TYPE, 
                                 data: Dict, first_name: str, chat_id: int):
