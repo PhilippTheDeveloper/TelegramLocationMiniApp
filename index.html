@@ -3,88 +3,47 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Location & Radius</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <title>Minimal Test</title>
   <style>
-    html,body{height:100%;margin:0;font-family:system-ui,Arial}
-    #map{height:65vh}
-    .panel{padding:12px;display:grid;gap:10px}
-    .row{display:flex;align-items:center;gap:12px}
-    input[type=range]{flex:1}
-    button{width:100%;padding:12px;border:0;border-radius:10px;font-weight:700;background:#2e9afe;color:#fff;cursor:pointer}
-    .hint{font-size:12px;color:#666}
+    body { font-family: system-ui, Arial; padding: 20px; text-align: center; }
+    button { width: 100%; max-width: 300px; padding: 15px; font-size: 18px; font-weight: bold; background: #2e9afe; color: #fff; border: 0; border-radius: 10px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <div class="panel">
-    <div class="row">
-      <label>Radius: <b><span id="rLabel">3</span> km</b></label>
-      <input id="r" type="range" min="0.5" max="25" step="0.5" value="3">
-    </div>
-    <!-- This button is now directly linked to the function -->
-    <button id="send" onclick="sendSelection()">✅ Send selection</button>
-    <div class="hint">Click the map or drag the pin to set the center (default: Berlin).</div>
-  </div>
+  <h1>Communication Test</h1>
+  <p>This page has NO map. Please click the button below to test the connection to your bot.</p>
+  <br/>
+  <button onclick="sendTestData()">✅ Send Test Data</button>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     const tg = window.Telegram?.WebApp;
     if (tg) {
       try { tg.ready(); } catch(e) {}
       tg.expand();
-      tg.MainButton.setText("✅ Send selection");
-      tg.MainButton.show();
     }
 
-    const BERLIN = { lat: 52.520008, lng: 13.404954, zoom: 12 };
-
-    const map = L.map('map').setView([BERLIN.lat, BERLIN.lng], BERLIN.zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-      attribution:'© OpenStreetMap'
-    }).addTo(map);
-    setTimeout(()=>map.invalidateSize(), 200);
-
-    let radiusKm = 3.0;
-    const marker = L.marker([BERLIN.lat, BERLIN.lng], { draggable:true }).addTo(map);
-    let circle = L.circle([BERLIN.lat, BERLIN.lng], { radius: radiusKm*1000 }).addTo(map);
-
-    function redraw(){ circle.setLatLng(marker.getLatLng()); circle.setRadius(radiusKm*1000); }
-    marker.on('dragend', redraw);
-    map.on('click', e => { marker.setLatLng(e.latlng); redraw(); });
-
-    const rInput = document.getElementById('r');
-    const rLabel = document.getElementById('rLabel');
-    rInput.addEventListener('input', ()=>{ radiusKm=parseFloat(rInput.value); rLabel.textContent=radiusKm; redraw(); });
-
-    function sendSelection() {
-      const { lat, lng } = marker.getLatLng();
-      const payload = {
-        lat: Number(lat.toFixed(6)),
-        lng: Number(lng.toFixed(6)),
-        radius_km: Number(radiusKm.toFixed(1))
+    function sendTestData() {
+      const testPayload = {
+        status: "success",
+        message: "The connection from the Mini App is working!",
+        timestamp: new Date().toISOString()
       };
+
       if (tg) {
         try {
-          tg.sendData(JSON.stringify(payload));
-          // You might see an alert from Telegram itself now, this is normal
-        } catch(e) {
-          tg.showAlert("Failed to send: " + (e?.message || e));
+          // This is the command to send data to your bot.
+          tg.sendData(JSON.stringify(testPayload));
+          // If successful, the Mini App should close automatically.
+        } catch (e) {
+          // If sendData itself fails, show an alert.
+          tg.showAlert("Error: " + (e?.message || e));
         }
       } else {
-        // This part runs if you open the HTML in a normal browser
-        navigator.clipboard?.writeText(JSON.stringify(payload));
-        alert('Payload copied to clipboard: '+JSON.stringify(payload));
+        // This is a fallback for testing in a normal browser.
+        alert('Not in Telegram. Payload: ' + JSON.stringify(testPayload));
       }
     }
-
-    // Telegram MainButton handler
-    if (tg) {
-      tg.onEvent('mainButtonClicked', sendSelection);
-    }
-    // The fallback button is now handled by the 'onclick' in the HTML, so this line is no longer needed:
-    // document.getElementById('send').addEventListener('click', sendSelection);
   </script>
 </body>
 </html>
