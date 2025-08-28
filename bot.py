@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
-WEB_APP_URL = 'https://philippthedeveloper.github.io/TelegramLocationMiniApp/'
+import time
+WEB_APP_URL = f'https://philippthedeveloper.github.io/TelegramLocationMiniApp/?v={int(time.time())}'
 
 if not BOT_TOKEN:
     logger.error("❌ BOT_TOKEN environment variable is required!")
