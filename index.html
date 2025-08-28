@@ -3,17 +3,66 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Fatal Error Test</title>
+  <title>Pinpointing The Error</title>
+  <style>
+    body { font-family: system-ui, Arial; padding: 20px; text-align: center; }
+    button { width: 100%; max-width: 300px; padding: 15px; font-size: 18px; font-weight: bold; background: #2e9afe; color: #fff; border: 0; border-radius: 10px; cursor: pointer; }
+  </style>
 </head>
 <body>
-  <h1>Testing JavaScript Execution</h1>
-  <p>If you can see this page, the HTML is loading. An alert box should have appeared. If it did not, JavaScript is not running.</p>
+  <h1>Debugging The Telegram Script</h1>
+  <p>You should see a "Script Started" alert when this page loads. Then, try clicking the button.</p>
+  <br/>
+  <button onclick="sendTestData()">✅ Send Test Data</button>
 
-  <!-- This is the most basic JavaScript test possible. -->
-  <!-- It runs immediately as the page is loading. -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
-    alert('JAVASCRIPT IS RUNNING!');
-  </script>
+    // Alert #1: This should appear as soon as the page loads.
+    alert('Script Started. Next, we will try to initialize the Telegram Web App.');
 
+    try {
+      const tg = window.Telegram?.WebApp;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+      }
+    } catch (e) {
+      // If there is any error in the block above, this alert will show it.
+      alert('CRITICAL ERROR during Telegram Init: ' + (e?.message || e));
+    }
+
+    // This function will only be defined if the code above did not crash.
+    function sendTestData() {
+      // Alert #2: This should ONLY appear when you click the button.
+      alert('Button click successful! Sending data...');
+      
+      const testPayload = { status: "success", message: "The button click works!" };
+      
+      try {
+        window.Telegram.WebApp.sendData(JSON.stringify(testPayload));
+      } catch (e) {
+        alert('ERROR sending data: ' + (e?.message || e));
+      }
+    }
+  </script>
 </body>
-</html>
+</html>```
+
+### Instructions (The Version Number is Critical)
+
+1.  **Update `index.html`:** Replace the code on GitHub. Save and commit.
+2.  **Update Node-RED URL:** Go to your `function` node in Node-RED. You **must change the version number again**. If it was `?v=2`, change it to `?v=3`.
+    ```javascript
+    const WEBAPP_URL = "https://philippthedeveloper.github.io/TelegramLocationMiniApp/?v=3";
+    ```
+    Click **Done** and **Deploy**.
+3.  **Restart Telegram:** Completely close and restart the Telegram application.
+4.  **Run the Test:** Send `/start` and click the button to open the Mini App.
+
+### Please Report the Exact Sequence of Alerts
+
+Now, please tell me exactly what happens. There are three possibilities:
+
+1.  **You see "Script Started", and when you click the button, you see "Button click successful!".** (This means it's fixed, and the test data will arrive in Node-RED).
+2.  **You see "Script Started", but when you click the button, nothing happens.** (This means the `try...catch` block failed silently, which is very strange).
+3.  **You see "Script Started", and then you immediately see "CRITICAL ERROR during Telegram Init: ...".** (This is the most likely outcome, and the error message will tell us exactly what is wrong).
