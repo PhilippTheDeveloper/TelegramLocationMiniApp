@@ -42,6 +42,17 @@
             color: var(--tg-theme-hint-color, #999999);
         }
 
+        .header .mode-badge {
+            display: inline-block;
+            background: var(--tg-theme-button-color, #0088cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
         .map-container {
             flex: 1;
             position: relative;
@@ -133,6 +144,15 @@
             transform: translateY(0);
         }
 
+        .done-button.apartment-mode {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .done-button.apartment-mode:hover {
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+
         .crosshair {
             position: absolute;
             top: 50%;
@@ -177,6 +197,11 @@
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
         }
 
+        .pin-icon.apartment-mode {
+            color: #28a745;
+            font-size: 36px;
+        }
+
         .status-toast {
             position: fixed;
             top: 20px;
@@ -198,11 +223,52 @@
             opacity: 1;
         }
 
-        /* Custom circle style */
+        /* Viertel marker style */
+        .viertel-marker {
+            background: rgba(40, 167, 69, 0.2);
+            border: 3px solid #28a745;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Custom circle styles */
         .radius-circle {
             fill-opacity: 0.1;
             stroke-width: 3;
             stroke-opacity: 0.6;
+        }
+
+        .radius-circle.apartment-mode {
+            stroke: #28a745;
+            fill: #28a745;
+        }
+
+        .location-info {
+            position: absolute;
+            bottom: 120px;
+            left: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            font-size: 13px;
+            color: #333;
+            display: none;
+        }
+
+        .location-info.apartment-mode {
+            background: rgba(40, 167, 69, 0.95);
+            color: white;
+        }
+
+        .location-info .coordinates {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 4px;
         }
 
         @media (max-width: 480px) {
@@ -222,18 +288,31 @@
                 padding: 14px;
                 font-size: 16px;
             }
+            
+            .location-info {
+                bottom: 100px;
+                left: 8px;
+                right: 8px;
+                padding: 10px 12px;
+                font-size: 12px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>📍 Set Location & Radius</h1>
-        <p>Drag the map to position, adjust radius</p>
+        <div class="mode-badge" id="modeBadge">📍 Location Sharing</div>
+        <h1 id="headerTitle">📍 Set Location & Radius</h1>
+        <p id="headerSubtitle">Drag the map to position, adjust radius</p>
     </div>
 
     <div class="map-container">
         <div id="map"></div>
-        <div class="pin-icon">📍</div>
+        <div class="pin-icon" id="pinIcon">📍</div>
+        <div class="location-info" id="locationInfo">
+            <strong id="infoTitle">📍 Selected Location</strong>
+            <div class="coordinates" id="infoCoords">Loading...</div>
+        </div>
     </div>
 
     <div class="controls">
@@ -243,7 +322,7 @@
             <span class="radius-value" id="radiusValue">1.8 km</span>
         </div>
         
-        <button class="done-button" onclick="shareLocation()">
+        <button class="done-button" id="doneButton" onclick="shareLocation()">
             Fertig
         </button>
     </div>
@@ -258,21 +337,82 @@
             tg.expand();
         }
 
-        // Berlin coordinates
+        // Parse URL parameters
+        function getURLParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                lat: params.get('lat') ? parseFloat(params.get('lat')) : null,
+                lng: params.get('lng') ? parseFloat(params.get('lng')) : null,
+                zoom: params.get('zoom') ? parseInt(params.get('zoom')) : null,
+                viertel: params.get('viertel') || null,
+                mode: params.get('mode') || 'location' // 'location' or 'apartment'
+            };
+        }
+
+        const urlParams = getURLParams();
+        const isApartmentMode = urlParams.mode === 'apartment';
+        
+        // Default coordinates (Berlin center or URL params)
         const BERLIN_LAT = 52.5200;
         const BERLIN_LNG = 13.4050;
+        const initialLat = urlParams.lat || BERLIN_LAT;
+        const initialLng = urlParams.lng || BERLIN_LNG;
+        const initialZoom = urlParams.zoom || (urlParams.lat ? 14 : 12);
 
         let map;
         let circle;
+        let viertelMarker;
         let currentRadius = 1.8;
+
+        // Update UI based on mode
+        function updateModeUI() {
+            const modeBadge = document.getElementById('modeBadge');
+            const headerTitle = document.getElementById('headerTitle');
+            const headerSubtitle = document.getElementById('headerSubtitle');
+            const pinIcon = document.getElementById('pinIcon');
+            const doneButton = document.getElementById('doneButton');
+            const locationInfo = document.getElementById('locationInfo');
+
+            if (isApartmentMode) {
+                modeBadge.textContent = '🏠 Apartment Search';
+                modeBadge.style.background = '#28a745';
+                
+                if (urlParams.viertel) {
+                    headerTitle.textContent = `🏠 Refine location in ${urlParams.viertel}`;
+                    headerSubtitle.textContent = 'Position the map for your preferred area within the neighborhood';
+                } else {
+                    headerTitle.textContent = '🏠 Set Berlin Location & Radius';
+                    headerSubtitle.textContent = 'Position the map, adjust search radius for apartments';
+                }
+                
+                pinIcon.textContent = '🏠';
+                pinIcon.classList.add('apartment-mode');
+                
+                doneButton.textContent = 'Continue Search';
+                doneButton.classList.add('apartment-mode');
+                
+                locationInfo.classList.add('apartment-mode');
+                
+                // Different initial radius for apartments
+                currentRadius = 2.0;
+                document.getElementById('radiusSlider').value = currentRadius;
+                document.getElementById('radiusValue').textContent = currentRadius.toFixed(1) + ' km';
+            } else {
+                modeBadge.textContent = '📍 Location Sharing';
+                headerTitle.textContent = '📍 Set Location & Radius';
+                headerSubtitle.textContent = 'Drag the map to position, adjust radius';
+                pinIcon.textContent = '📍';
+                doneButton.textContent = 'Fertig';
+            }
+        }
 
         // Initialize map
         function initMap() {
             map = L.map('map', {
                 zoomControl: true,
                 attributionControl: false,
-                center: [BERLIN_LAT, BERLIN_LNG],
-                zoom: 12
+                center: [initialLat, initialLng],
+                zoom: initialZoom
             });
 
             // Add OpenStreetMap tiles
@@ -281,12 +421,34 @@
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
+            // Add Viertel marker if we have coordinates from URL (apartment mode)
+            if (isApartmentMode && urlParams.lat && urlParams.lng) {
+                viertelMarker = L.marker([urlParams.lat, urlParams.lng], {
+                    icon: L.divIcon({
+                        className: 'viertel-marker',
+                        html: '<div style="background: rgba(40, 167, 69, 0.3); border: 2px solid #28a745; border-radius: 50%; width: 16px; height: 16px;"></div>',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })
+                }).addTo(map);
+                
+                viertelMarker.bindTooltip(`${urlParams.viertel} Center`, {
+                    permanent: false,
+                    direction: 'top',
+                    offset: [0, -10]
+                });
+            }
+
             // Create initial circle
             createCircle();
 
             // Update circle when map moves
             map.on('move', updateCirclePosition);
             map.on('zoom', updateCirclePosition);
+            
+            // Update location info
+            map.on('moveend', updateLocationInfo);
+            updateLocationInfo(); // Initial update
         }
 
         function createCircle() {
@@ -295,14 +457,16 @@
             }
 
             const center = map.getCenter();
+            const circleColor = isApartmentMode ? '#28a745' : '#0088cc';
+            
             circle = L.circle([center.lat, center.lng], {
                 radius: currentRadius * 1000, // Convert km to meters
-                color: '#0088cc',
-                fillColor: '#0088cc',
+                color: circleColor,
+                fillColor: circleColor,
                 fillOpacity: 0.1,
                 weight: 3,
                 opacity: 0.6,
-                className: 'radius-circle'
+                className: isApartmentMode ? 'radius-circle apartment-mode' : 'radius-circle'
             }).addTo(map);
         }
 
@@ -318,6 +482,32 @@
             if (circle) {
                 circle.setRadius(radius * 1000); // Convert km to meters
             }
+        }
+
+        function updateLocationInfo() {
+            const center = map.getCenter();
+            const lat = center.lat.toFixed(6);
+            const lng = center.lng.toFixed(6);
+            
+            const infoTitle = document.getElementById('infoTitle');
+            const infoCoords = document.getElementById('infoCoords');
+            const locationInfo = document.getElementById('locationInfo');
+            
+            if (isApartmentMode) {
+                infoTitle.textContent = urlParams.viertel ? 
+                    `🏠 Location in ${urlParams.viertel}` : 
+                    '🏠 Berlin Search Location';
+            } else {
+                infoTitle.textContent = '📍 Selected Location';
+            }
+            
+            infoCoords.textContent = `${lat}, ${lng}`;
+            locationInfo.style.display = 'block';
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                locationInfo.style.display = 'none';
+            }, 3000);
         }
 
         // Radius slider event
@@ -338,13 +528,19 @@
                 latitude: lat,
                 longitude: lng,
                 radius: radius,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                mode: isApartmentMode ? 'apartment' : 'location',
+                viertel: urlParams.viertel || null
             };
             
             if (tg && tg.sendData) {
                 // Send data back to Telegram bot
                 tg.sendData(JSON.stringify(locationData));
-                showToast('Location shared!');
+                
+                const message = isApartmentMode ? 
+                    'Location set! Continuing apartment search...' : 
+                    'Location shared!';
+                showToast(message);
                 
                 // Close the Mini App after a short delay
                 setTimeout(() => {
@@ -355,10 +551,17 @@
             } else {
                 // Fallback for testing
                 console.log('Location data:', locationData);
-                showToast('Location data ready!');
+                
+                const message = isApartmentMode ? 
+                    'Location data ready for apartment search!' : 
+                    'Location data ready!';
+                showToast(message);
                 
                 // Copy to clipboard as fallback
-                const shareText = `📍 Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}\n🎯 Radius: ${radius} km`;
+                const shareText = isApartmentMode ?
+                    `🏠 Apartment Search Location${urlParams.viertel ? ` in ${urlParams.viertel}` : ''}: ${lat.toFixed(6)}, ${lng.toFixed(6)}\n🎯 Search Radius: ${radius} km` :
+                    `📍 Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}\n🎯 Radius: ${radius} km`;
+                    
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(shareText);
                     showToast('Copied to clipboard!');
@@ -378,7 +581,16 @@
 
         // Initialize when page loads
         window.addEventListener('load', function() {
+            updateModeUI();
             initMap();
+            
+            // Show initial toast with mode info
+            setTimeout(() => {
+                const message = isApartmentMode ? 
+                    `🏠 Setting location for apartment search${urlParams.viertel ? ` in ${urlParams.viertel}` : ''}` :
+                    '📍 Ready to share location with radius';
+                showToast(message);
+            }, 1000);
         });
 
         // Handle Telegram Web App events
