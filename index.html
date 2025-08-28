@@ -22,8 +22,8 @@
       <label>Radius: <b><span id="rLabel">3</span> km</b></label>
       <input id="r" type="range" min="0.5" max="25" step="0.5" value="3">
     </div>
-    <!-- Fallback button (in case MainButton is hidden on some client) -->
-    <button id="send">✅ Send selection</button>
+    <!-- This button is now directly linked to the function -->
+    <button id="send" onclick="sendSelection()">✅ Send selection</button>
     <div class="hint">Click the map or drag the pin to set the center (default: Berlin).</div>
   </div>
 
@@ -68,14 +68,14 @@
       if (tg) {
         try {
           tg.sendData(JSON.stringify(payload));
-          tg.showAlert("Sent!");
-          tg.close();
+          // You might see an alert from Telegram itself now, this is normal
         } catch(e) {
           tg.showAlert("Failed to send: " + (e?.message || e));
         }
       } else {
+        // This part runs if you open the HTML in a normal browser
         navigator.clipboard?.writeText(JSON.stringify(payload));
-        alert('Payload: '+JSON.stringify(payload));
+        alert('Payload copied to clipboard: '+JSON.stringify(payload));
       }
     }
 
@@ -83,8 +83,8 @@
     if (tg) {
       tg.onEvent('mainButtonClicked', sendSelection);
     }
-    // Fallback page button
-    document.getElementById('send').addEventListener('click', sendSelection);
+    // The fallback button is now handled by the 'onclick' in the HTML, so this line is no longer needed:
+    // document.getElementById('send').addEventListener('click', sendSelection);
   </script>
 </body>
 </html>
